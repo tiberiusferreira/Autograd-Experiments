@@ -6,6 +6,14 @@ pub struct MulOp {
     right: Tensor,
 }
 
+pub fn mul(left: Tensor, right: Tensor) -> Tensor {
+    let mul_op: MulOp = MulOp {
+        left,
+        right
+    };
+    mul_op.forward()
+}
+
 impl Op for MulOp {
     fn name(&self) -> String {
         "Mul".to_string()
@@ -51,3 +59,4 @@ impl std::ops::Mul for Tensor {
         mul_op.forward()
     }
 }
+

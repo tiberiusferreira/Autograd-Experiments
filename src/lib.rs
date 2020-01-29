@@ -3,6 +3,7 @@ mod store;
 pub use store::ParameterStore;
 use std::collections::HashMap;
 pub use ops_impls::*;
+pub mod test_helpers;
 
 pub trait Op: std::fmt::Debug{
     fn name(&self) -> String;
@@ -54,7 +55,7 @@ impl Tensor {
         }
     }
 
-    pub fn get_trainable_with_grads(&mut self) -> ParameterStore{
+    pub fn backwards(&mut self) -> ParameterStore{
         // where the parameters will be stored after having the gradients populated
         let mut hash: HashMap<String, Tensor> = HashMap::new();
 

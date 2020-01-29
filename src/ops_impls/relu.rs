@@ -13,6 +13,13 @@ pub fn relu(t: Tensor) -> Tensor{
     }.forward()
 }
 
+pub fn relu_custom(t: Tensor, neg_slope: f32) -> Tensor{
+    Relu{
+        operand: t,
+        leak_const: neg_slope
+    }.forward()
+}
+
 impl Op for Relu {
     fn name(&self) -> String {
         "ReLu".to_string()
@@ -51,4 +58,5 @@ impl Op for Relu {
         vec![self.operand.shallow_clone()]
     }
 }
+
 

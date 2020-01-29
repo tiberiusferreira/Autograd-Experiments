@@ -10,7 +10,7 @@ fn main() {
         let mut c = a * b;
         c = relu(c);
         println!("{:#?}", c);
-        vs = c.get_trainable_with_grads();
+        vs = c.backwards();
         println!("{:#?}", c);
         for (_id, tensor) in &mut vs {
             tensor.data = tensor.data - tensor.grad.unwrap()*0.1;
