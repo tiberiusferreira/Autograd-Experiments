@@ -1,0 +1,20 @@
+[package]
+name = "backprop"
+version = "0.1.0"
+authors = ["Tiberio Ferreira <tiberiusferreira@gmail.com>"]
+edition = "2018"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+autograd = { version = "0.9.7"}
+
+
+
+[lib]
+name = "backprop"
+path = "src/lib.rs"
+
+[[bin]]
+name = "main"
+path = "src/main.rs"
