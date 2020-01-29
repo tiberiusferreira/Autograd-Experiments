@@ -21,7 +21,7 @@ impl Op for Relu {
     fn forward(self) -> Tensor {
         let mut out_data= self.operand.data;
         if self.operand.data < 0.{
-            out_data *= self.operand.data*self.leak_const;
+            out_data = self.operand.data*self.leak_const;
         }
         let mut out_tensor = Tensor::new(out_data);
         out_tensor.mother_op = Some(Box::new(self));
@@ -30,11 +30,13 @@ impl Op for Relu {
 
     fn set_operand_grad(&mut self, previous_op_grad: f32) {
         // 0 when input < 0, equal to input if input > 0
-        let mut out_grad = self.operand.data;
+        let out_grad;
         if self.operand.data < 0. {
-            out_grad *= self.leak_const;
+            out_grad = previous_op_grad*0.1;
+        }else{
+            out_grad = previous_op_grad;
         }
-        self.operand.grad = Some(out_grad*previous_op_grad);
+        self.operand.grad = Some(out_grad);
     }
 
     fn operands(&self) -> Vec<&Tensor> {
