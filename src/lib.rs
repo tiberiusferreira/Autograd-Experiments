@@ -5,8 +5,7 @@ use std::collections::HashMap;
 pub use store::ParameterStore;
 pub mod test_helpers;
 use ndarray::prelude::arr1;
-use ndarray::{Array, Array1, Dimension, IntoDimension, IxDyn, OwnedRepr};
-use std::convert::TryInto;
+use ndarray::{IxDyn};
 
 pub trait Op: std::fmt::Debug {
     fn name(&self) -> String;

@@ -9,3 +9,4 @@ pub use mul::mul;
 //pub use sub::sub;
 //#[cfg(test)]
 //mod tests;
+pub (in crate) mod ndarray_specific;
