@@ -1,6 +1,6 @@
 use crate::{Op, Tensor};
 use crate::ndarray_specific::mm_ndarray;
-
+use ndarray::prelude::IxDyn;
 #[derive(Debug)]
 pub struct MulOp {
     left: Tensor,
@@ -18,19 +18,20 @@ impl Op for MulOp {
     }
 
     fn forward(self) -> Tensor {
-//        if left_shape.len() > 2 || right_shape.len() > 2 {
-//            panic!("Mul is only implemented for 1D or 2D tensors");
-//        }
-        let data = mm_ndarray(&self.left.data, &self.right.data);
+        let data = mm_ndarray(self.left.data.view(), self.right.data.view());
         let mut tensor = Tensor::from_ndarray(data);
         tensor.mother_op = Some(Box::new(self));
         tensor
-
     }
 
-    fn set_operand_grad(&mut self, _previous_op_grad: f32) {
-//        self.right.grad = Some(self.left.data * previous_op_grad);
-//        self.left.grad = Some(self.right.data * previous_op_grad);
+    fn set_operand_grad(&mut self, previous_op_grad: ndarray::Array<f32, IxDyn>) {
+        /// taken from https://github.com/pytorch/pytorch/blob/master/tools/autograd/templates/Functions.cpp
+        /// left = mm_mat1_backward
+        /// right = mm_mat2_backward
+
+        self.left.grad = Some(mm_ndarray(previous_op_grad.view(), self.right.data.t()));
+        self.right.grad = Some(mm_ndarray(self.left.data.t(), previous_op_grad.view()));
+
     }
 
     fn operands(&self) -> Vec<&Tensor> {

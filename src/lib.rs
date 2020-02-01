@@ -5,7 +5,7 @@ use std::collections::HashMap;
 pub use store::ParameterStore;
 pub mod test_helpers;
 use ndarray::prelude::arr1;
-use ndarray::{IxDyn};
+use ndarray::{IxDyn, arr2, Axis};
 
 pub trait Op: std::fmt::Debug {
     fn name(&self) -> String;
@@ -13,7 +13,7 @@ pub trait Op: std::fmt::Debug {
     /// The Tensor returned should have this Op as its "mother op"
     fn forward(self) -> Tensor;
     /// Should set its own operands gradients
-    fn set_operand_grad(&mut self, previous_op_grad: f32);
+    fn set_operand_grad(&mut self, previous_op_grad: ndarray::Array<f32, IxDyn>);
     fn operands(&self) -> Vec<&Tensor>;
     fn operands_mut(&mut self) -> Vec<&mut Tensor>;
     fn operands_shallow_clone(&self) -> Vec<Tensor>;
@@ -42,14 +42,23 @@ pub struct Tensor {
     pub data: ndarray::Array<f32, IxDyn>,
     shape: Vec<usize>,
     parameter_id: Option<String>,
-    pub grad: Option<f32>,
+    pub grad: Option<ndarray::Array<f32, IxDyn>>,
     mother_op: Option<Box<dyn Op>>,
 }
 
 impl Tensor {
     pub fn new(val: &[f32]) -> Self {
+        /*/// let a = arr2(&[[1, 2, 3],
+///                [4, 5, 6]]);*/
+//        let mut v = vec![];
+//        v.push(val.to_vec().as_slice());
+//        let w = [val.to_vec()];
+//        let k: [&[f32]; 1] = v.as_slice();
+
+        let k = arr1(val);
+//        let k = k.insert_axis(Axis(1));
         Tensor {
-            data: arr1(val).into_dyn(),
+            data: k.into_dyn(),
             mother_op: None,
             parameter_id: None,
             grad: None,
@@ -88,7 +97,10 @@ impl Tensor {
         }
     }
 
-    pub fn backwards(&mut self) -> ParameterStore {
+    pub fn backwards(&mut self, initial_grad: Option<ndarray::Array<f32, IxDyn>>) -> ParameterStore {
+        if let Some(grad) = initial_grad{
+            self.grad = Some(grad);
+        }
         // where the parameters will be stored after having the gradients populated
         let mut hash: HashMap<String, Tensor> = HashMap::new();
 
@@ -101,7 +113,8 @@ impl Tensor {
     pub fn recursive_calc_grads(&mut self, hash: &mut HashMap<String, Tensor>) {
         if let Some(op) = &mut self.mother_op {
             // Set the gradient of this tensor's original Op arguments
-            op.set_operand_grad(self.grad.unwrap_or(1.));
+            let one = ndarray::arr1(&[1.]).into_dyn();
+            op.set_operand_grad(self.grad.clone().unwrap_or(one));
 
             // Ask the operands to set their Ops operands gradients too
             for operand in op.operands_mut() {
