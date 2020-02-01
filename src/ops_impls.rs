@@ -1,5 +1,5 @@
-mod mul;
-pub use mul::mul;
+mod matmul;
+pub use matmul::matmul;
 //mod relu;
 //pub use relu::relu;
 //pub use relu::relu_custom;

@@ -5,7 +5,7 @@ use std::collections::HashMap;
 pub use store::ParameterStore;
 pub mod test_helpers;
 use ndarray::prelude::arr1;
-use ndarray::{IxDyn, arr2, Axis};
+use ndarray::{IxDyn};
 
 pub trait Op: std::fmt::Debug {
     fn name(&self) -> String;
@@ -97,9 +97,10 @@ impl Tensor {
         }
     }
 
-    pub fn backwards(&mut self, initial_grad: Option<ndarray::Array<f32, IxDyn>>) -> ParameterStore {
+    pub fn backwards(&mut self, initial_grad: Option<Tensor>) -> ParameterStore {
         if let Some(grad) = initial_grad{
-            self.grad = Some(grad);
+            assert_eq!(self.shape, grad.shape, "Gradient needs to have the same shape as the tensor itself");
+            self.grad = Some(grad.data);
         }
         // where the parameters will be stored after having the gradients populated
         let mut hash: HashMap<String, Tensor> = HashMap::new();

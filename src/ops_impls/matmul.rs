@@ -2,19 +2,19 @@ use crate::{Op, Tensor};
 use crate::ndarray_specific::mm_ndarray;
 use ndarray::prelude::IxDyn;
 #[derive(Debug)]
-pub struct MulOp {
+pub struct MatMulOp {
     left: Tensor,
     right: Tensor,
 }
 
-pub fn mul(left: Tensor, right: Tensor) -> Tensor {
-    let mul_op: MulOp = MulOp { left, right };
+pub fn matmul(left: Tensor, right: Tensor) -> Tensor {
+    let mul_op: MatMulOp = MatMulOp { left, right };
     mul_op.forward()
 }
 
-impl Op for MulOp {
+impl Op for MatMulOp {
     fn name(&self) -> String {
-        "Mul".to_string()
+        "MatMul".to_string()
     }
 
     fn forward(self) -> Tensor {
@@ -25,9 +25,9 @@ impl Op for MulOp {
     }
 
     fn set_operand_grad(&mut self, previous_op_grad: ndarray::Array<f32, IxDyn>) {
-        /// taken from https://github.com/pytorch/pytorch/blob/master/tools/autograd/templates/Functions.cpp
-        /// left = mm_mat1_backward
-        /// right = mm_mat2_backward
+        // taken from https://github.com/pytorch/pytorch/blob/master/tools/autograd/templates/Functions.cpp
+        // left = mm_mat1_backward
+        // right = mm_mat2_backward
 
         self.left.grad = Some(mm_ndarray(previous_op_grad.view(), self.right.data.t()));
         self.right.grad = Some(mm_ndarray(self.left.data.t(), previous_op_grad.view()));
@@ -47,13 +47,13 @@ impl Op for MulOp {
     }
 }
 
-impl std::ops::Mul for Tensor {
-    type Output = Tensor;
-
-    fn mul(self, rhs: Self) -> Self::Output {
-        let left = self;
-        let right = rhs;
-        let mul_op: MulOp = MulOp { left, right };
-        mul_op.forward()
-    }
-}
+//impl std::ops::Mul for Tensor {
+//    type Output = Tensor;
+//
+//    fn mul(self, rhs: Self) -> Self::Output {
+//        let left = self;
+//        let right = rhs;
+//        let mul_op: MatMulOp = MatMulOp { left, right };
+//        mul_op.forward()
+//    }
+//}
