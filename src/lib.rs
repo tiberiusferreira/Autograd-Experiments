@@ -47,22 +47,37 @@ pub struct Tensor {
 }
 
 impl Tensor {
-    pub fn new(val: &[f32]) -> Self {
-        /*/// let a = arr2(&[[1, 2, 3],
-///                [4, 5, 6]]);*/
-//        let mut v = vec![];
-//        v.push(val.to_vec().as_slice());
-//        let w = [val.to_vec()];
-//        let k: [&[f32]; 1] = v.as_slice();
-
-        let k = arr1(val);
-//        let k = k.insert_axis(Axis(1));
+    pub fn from_slice(val: &[f32]) -> Self {
         Tensor {
-            data: k.into_dyn(),
+            data: arr1(val).into_dyn(),
             mother_op: None,
             parameter_id: None,
             grad: None,
             shape: vec![val.len()],
+        }
+    }
+
+    pub fn zeros(shape: &[usize]) -> Self {
+        let val = ndarray::prelude::ArrayBase::zeros(shape);
+        Tensor {
+            data: val.into_dyn(),
+            mother_op: None,
+            parameter_id: None,
+            grad: None,
+            shape: shape.to_vec(),
+        }
+    }
+
+    pub fn rand(shape: &[usize]) -> Self {
+        use ndarray_rand::RandomExt;
+        use ndarray_rand::rand_distr::Uniform;
+        let val = ndarray::Array::random(shape, Uniform::new(0., 10.));
+        Tensor {
+            data: val.into_dyn(),
+            mother_op: None,
+            parameter_id: None,
+            grad: None,
+            shape: shape.to_vec(),
         }
     }
 

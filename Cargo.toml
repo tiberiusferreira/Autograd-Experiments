@@ -8,6 +8,7 @@ edition = "2018"
 
 [dependencies]
 ndarray = "0.13.0"
+ndarray-rand = "0.11.0"
 
 [lib]
 name = "backprop"

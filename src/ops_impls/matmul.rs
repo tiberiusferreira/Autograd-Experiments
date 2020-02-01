@@ -1,6 +1,7 @@
 use crate::{Op, Tensor};
 use crate::ndarray_specific::mm_ndarray;
 use ndarray::prelude::IxDyn;
+
 #[derive(Debug)]
 pub struct MatMulOp {
     left: Tensor,
