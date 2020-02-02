@@ -1,5 +1,5 @@
-use crate::{Op, Tensor};
 use crate::ndarray_specific::mm_ndarray;
+use crate::{Op, Tensor};
 use ndarray::prelude::IxDyn;
 
 #[derive(Debug)]
@@ -32,7 +32,6 @@ impl Op for MatMulOp {
 
         self.left.grad = Some(mm_ndarray(previous_op_grad.view(), self.right.data.t()));
         self.right.grad = Some(mm_ndarray(self.left.data.t(), previous_op_grad.view()));
-
     }
 
     fn operands(&self) -> Vec<&Tensor> {
@@ -43,18 +42,10 @@ impl Op for MatMulOp {
         vec![&mut self.left, &mut self.right]
     }
 
-    fn operands_shallow_clone(&self) -> Vec<Tensor> {
-        vec![self.left.shallow_clone(), self.right.shallow_clone()]
+    fn operands_clone_without_op_graph(&self) -> Vec<Tensor> {
+        vec![
+            self.left.clone_without_op_graph(),
+            self.right.clone_without_op_graph(),
+        ]
     }
 }
-
-//impl std::ops::Mul for Tensor {
-//    type Output = Tensor;
-//
-//    fn mul(self, rhs: Self) -> Self::Output {
-//        let left = self;
-//        let right = rhs;
-//        let mul_op: MatMulOp = MatMulOp { left, right };
-//        mul_op.forward()
-//    }
-//}
