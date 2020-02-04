@@ -2,20 +2,37 @@ use crate::{Op, ParameterStore};
 use ndarray::arr1;
 use ndarray::prelude::IxDyn;
 use std::collections::HashMap;
+pub use crate::tensor::backends::NdArray;
 
+
+mod backends;
+pub use backends::TensorBackend;
 #[derive(Debug)]
-pub struct Tensor {
-    pub data: ndarray::Array<f32, IxDyn>,
+pub struct Tensor<T: TensorBackend> {
+    pub data: T,
     pub(in crate) shape: Vec<usize>,
     pub(in crate) parameter_id: Option<String>,
-    pub grad: Option<Box<Tensor>>,
-    pub(in crate) mother_op: Option<Box<dyn Op>>,
+    pub grad: Option<Box<Tensor<T>>>,
+    pub(in crate) mother_op: Option<Box<dyn Op<T>>>,
 }
 
-impl Tensor {
+impl Tensor<NdArray> {
+    pub fn from_ndarray(arr: ndarray::Array<f32, IxDyn>) -> Tensor<NdArray> {
+        let shape = arr.shape().to_vec();
+        Tensor {
+            data: NdArray(arr),
+            mother_op: None,
+            parameter_id: None,
+            grad: None,
+            shape,
+        }
+    }
+}
+
+impl<T: TensorBackend> Tensor<T> {
     pub fn new(val: &[f32]) -> Self {
         Tensor {
-            data: arr1(val).into_dyn(),
+            data: T::from_slice(val),
             mother_op: None,
             parameter_id: None,
             grad: None,
@@ -24,9 +41,9 @@ impl Tensor {
     }
 
     pub fn zeros(shape: &[usize]) -> Self {
-        let val = ndarray::prelude::ArrayBase::zeros(shape);
+//        let val = ndarray::prelude::ArrayBase::zeros(shape);
         Tensor {
-            data: val.into_dyn(),
+            data: T::zeros(shape),
             mother_op: None,
             parameter_id: None,
             grad: None,
@@ -37,9 +54,9 @@ impl Tensor {
     pub fn rand(shape: &[usize]) -> Self {
         use ndarray_rand::rand_distr::Uniform;
         use ndarray_rand::RandomExt;
-        let val = ndarray::Array::random(shape, Uniform::new(0., 10.));
+//        let val = ndarray::Array::random(shape, Uniform::new(0., 10.));
         Tensor {
-            data: val.into_dyn(),
+            data: T::rand(shape),
             mother_op: None,
             parameter_id: None,
             grad: None,
@@ -47,31 +64,9 @@ impl Tensor {
         }
     }
 
-    pub fn from_ndarray(arr: ndarray::Array<f32, IxDyn>) -> Self {
-        let shape = arr.shape().to_vec();
-        Tensor {
-            data: arr,
-            mother_op: None,
-            parameter_id: None,
-            grad: None,
-            shape,
-        }
-    }
-//
-//    pub fn value_as_scalar(arr: ndarray::Array<f32, IxDyn>) -> Self {
-//        let shape = arr.shape().to_vec();
-//        Tensor {
-//            data: arr,
-//            mother_op: None,
-//            parameter_id: None,
-//            grad: None,
-//            shape,
-//        }
-//    }
-
     pub fn new_trainable(val: &[f32], id: String) -> Self {
         Tensor {
-            data: arr1(val).into_dyn(),
+            data: T::from_slice(val),
             mother_op: None,
             parameter_id: Some(id),
             grad: None,
@@ -79,7 +74,7 @@ impl Tensor {
         }
     }
 
-    pub(in crate) fn set_grad(&mut self, grad: Tensor) {
+    pub(in crate) fn set_grad(&mut self, grad: Tensor<T>) {
         assert_eq!(
             self.shape, grad.shape,
             "Gradient must have same shape as the Tensor itself: {:?} {:?}",
@@ -89,7 +84,7 @@ impl Tensor {
     }
 
     /// Removes the computation graph history which generated this tensor
-    pub fn into_standalone(mut self) -> Tensor {
+    pub fn into_standalone(mut self) -> Tensor<T> {
         self.mother_op = None;
         self
     }
@@ -98,9 +93,9 @@ impl Tensor {
         self.shape.as_slice()
     }
 
-    pub fn reshape(self, shape: &[usize]) -> Tensor {
-        crate::ops_impls::reshape(self, shape)
-    }
+//    pub fn reshape(self, shape: &[usize]) -> Tensor<T> {
+//        crate::ops_impls::reshape(self, shape)
+//    }
 
     pub fn enable_training(&mut self, id: String) {
         self.parameter_id = Some(id);
@@ -130,7 +125,7 @@ impl Tensor {
         }
     }
 
-    pub fn backwards(&mut self, initial_grad: Option<Tensor>) -> ParameterStore {
+    pub fn backwards(&mut self, initial_grad: Option<Tensor<T>>) -> ParameterStore<T> {
         if let Some(grad) = initial_grad {
             assert_eq!(
                 self.shape, grad.shape,
@@ -142,11 +137,12 @@ impl Tensor {
                 self.shape.len() == 1 && self.shape[0] == 1,
                 "Backward call needs a gradient if the Tensor shape is not [1]"
             );
-            self.set_grad(Tensor::from_ndarray(arr1(&[1.]).into_dyn()));
+            unimplemented!()
+//            self.set_grad(Tensor::from_ndarray(arr1(&[1.]).into_dyn()));
         }
 
         // where the parameters will be stored after having the gradients populated
-        let mut hash: HashMap<String, Tensor> = HashMap::new();
+        let mut hash: HashMap<String, Tensor<T>> = HashMap::new();
 
         // for each operation, calculate operands gradients recursively
         self.recursive_calc_grads(&mut hash);
@@ -154,7 +150,7 @@ impl Tensor {
         ParameterStore::from_hashmap(hash)
     }
 
-    pub fn recursive_calc_grads(&mut self, hash: &mut HashMap<String, Tensor>) {
+    pub fn recursive_calc_grads(&mut self, hash: &mut HashMap<String, Tensor<T>>) {
         if let Some(op) = &mut self.mother_op {
             // Set the gradient of this tensor's original Op arguments
             let self_grad = self
@@ -174,7 +170,7 @@ impl Tensor {
             let operands = op.operands();
 
             // Get all tensors which are parameters
-            let trainable_operands: Vec<Tensor> = operands
+            let trainable_operands: Vec<Tensor<T>> = operands
                 .iter()
                 .filter(|o| o.parameter_id.is_some())
                 .map(|o| o.clone_without_op_graph())

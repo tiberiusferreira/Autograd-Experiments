@@ -40,11 +40,11 @@ impl Op for MatMulOp {
         ))));
     }
 
-    fn operands(&self) -> Vec<&Tensor> {
+    fn operands(&self) -> Vec<&Tensor<T>> {
         vec![&self.left, &self.right]
     }
 
-    fn operands_mut(&mut self) -> Vec<&mut Tensor> {
+    fn operands_mut(&mut self) -> Vec<&mut Tensor<T>> {
         vec![&mut self.left, &mut self.right]
     }
 

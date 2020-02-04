@@ -7,6 +7,7 @@ pub mod test_helpers;
 use ndarray::prelude::arr1;
 use ndarray::IxDyn;
 mod tensor;
+pub use tensor::{TensorBackend, NdArray};
 pub use crate::tensor::Tensor;
 
 //

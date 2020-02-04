@@ -26,9 +26,12 @@ impl Op for Sum {
 
     fn set_operand_grad(&mut self, previous_op_grad: Tensor) {
         let operand_size = self.input.shape.as_slice();
-        let t = Tensor::zeros(operand_size);
+        let mut t = Tensor::zeros(operand_size);
         assert!(previous_op_grad.shape.as_slice() == [1]);
         // Here previous_op_grad should be a scalar Tensor and we need to add that to t
+        // the gradient is just a tensor, with shape equal to self and value equal to previous_op_grad
+
+
 
         // TODO: Problem adding a "scalar" tensor should always be possible, but should the Tensor
         // be "cast" to a scalar?
