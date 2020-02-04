@@ -24,24 +24,3 @@ pub fn mm_ndarray(
     let m2: ndarray::ArrayView<f32, Ix2> = m2.view().into_dimensionality().unwrap();
     m1.dot(&m2).into_dyn()
 }
-
-//enum IxDynActualType<'a>{
-//    OneD(ndarray::ArrayView<'a, f32, Ix1>),
-//    TwoD(ndarray::ArrayView<'a, f32, Ix2>)
-//}
-//
-//fn get_actual_type(m1: ndarray::ArrayView<f32, IxDyn>) -> IxDynActualType {
-//    match m1.shape().len(){
-//        1 => {
-//            let m1: ndarray::ArrayView<f32, Ix1> = m1.into_dimensionality().unwrap();
-//            IxDynActualType::OneD(m1)
-//        },
-//        2 => {
-//            let m1: ndarray::ArrayView<f32, Ix2> = m1.into_dimensionality().unwrap();
-//            IxDynActualType::TwoD(m1)
-//        }
-//        x => {
-//            panic!("Tried to multiply Tensor of rank: {}", x);
-//        }
-//    }
-//}

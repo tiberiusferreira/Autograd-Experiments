@@ -8,7 +8,7 @@ pub struct Tensor {
     pub data: ndarray::Array<f32, IxDyn>,
     pub(in crate) shape: Vec<usize>,
     pub(in crate) parameter_id: Option<String>,
-    pub grad: Option<ndarray::Array<f32, IxDyn>>,
+    pub grad: Option<Box<Tensor>>,
     pub(in crate) mother_op: Option<Box<dyn Op>>,
 }
 
@@ -57,6 +57,17 @@ impl Tensor {
             shape,
         }
     }
+//
+//    pub fn value_as_scalar(arr: ndarray::Array<f32, IxDyn>) -> Self {
+//        let shape = arr.shape().to_vec();
+//        Tensor {
+//            data: arr,
+//            mother_op: None,
+//            parameter_id: None,
+//            grad: None,
+//            shape,
+//        }
+//    }
 
     pub fn new_trainable(val: &[f32], id: String) -> Self {
         Tensor {
@@ -68,8 +79,27 @@ impl Tensor {
         }
     }
 
+    pub(in crate) fn set_grad(&mut self, grad: Tensor) {
+        assert_eq!(
+            self.shape, grad.shape,
+            "Gradient must have same shape as the Tensor itself: {:?} {:?}",
+            self.shape, grad.shape
+        );
+        self.grad = Some(Box::new(grad));
+    }
+
+    /// Removes the computation graph history which generated this tensor
+    pub fn into_standalone(mut self) -> Tensor {
+        self.mother_op = None;
+        self
+    }
+
     pub fn shape(&self) -> &[usize] {
         self.shape.as_slice()
+    }
+
+    pub fn reshape(self, shape: &[usize]) -> Tensor {
+        crate::ops_impls::reshape(self, shape)
     }
 
     pub fn enable_training(&mut self, id: String) {
@@ -80,12 +110,22 @@ impl Tensor {
         self.parameter_id = None;
     }
 
+    pub fn clone_only_data(&self) -> Self {
+        Tensor {
+            data: self.data.clone(),
+            mother_op: None,
+            parameter_id: None,
+            grad: None,
+            shape: self.shape.clone(),
+        }
+    }
+
     pub fn clone_without_op_graph(&self) -> Self {
         Tensor {
             data: self.data.clone(),
             mother_op: None,
             parameter_id: self.parameter_id.clone(),
-            grad: self.grad.clone(),
+            grad: self.grad.as_ref().map(|e| Box::new(e.clone_only_data())),
             shape: self.shape.clone(),
         }
     }
@@ -96,8 +136,15 @@ impl Tensor {
                 self.shape, grad.shape,
                 "Gradient needs to have the same shape as the tensor itself"
             );
-            self.grad = Some(grad.data);
+            self.grad = Some(Box::new(grad));
+        } else {
+            assert!(
+                self.shape.len() == 1 && self.shape[0] == 1,
+                "Backward call needs a gradient if the Tensor shape is not [1]"
+            );
+            self.set_grad(Tensor::from_ndarray(arr1(&[1.]).into_dyn()));
         }
+
         // where the parameters will be stored after having the gradients populated
         let mut hash: HashMap<String, Tensor> = HashMap::new();
 
@@ -110,8 +157,13 @@ impl Tensor {
     pub fn recursive_calc_grads(&mut self, hash: &mut HashMap<String, Tensor>) {
         if let Some(op) = &mut self.mother_op {
             // Set the gradient of this tensor's original Op arguments
-            let one = ndarray::arr1(&[1.]).into_dyn();
-            op.set_operand_grad(self.grad.clone().unwrap_or(one));
+            let self_grad = self
+                .grad
+                .as_ref()
+                .expect("In recursive_calc_grads without grad")
+                .clone_only_data();
+
+            op.set_operand_grad(self_grad);
 
             // Ask the operands to set their Ops operands gradients too
             for operand in op.operands_mut() {

@@ -6,7 +6,6 @@ use crate::Tensor;
 /// To do so we can calculate the gradient with respect to the input
 /// change the input a little bit and check that the output changes by gradient*(little bit)
 
-
 fn test_binary_op(op: Box<dyn Fn(Tensor, Tensor) -> Tensor>) {
     let a_val = &[2., 3., 4., 5.];
     let grad_val = ndarray::arr2(&[[1., 1.], [1., 1.]]).into_dyn();
@@ -16,7 +15,7 @@ fn test_binary_op(op: Box<dyn Fn(Tensor, Tensor) -> Tensor>) {
     b.backwards(Some(Tensor::from_ndarray(grad_val)));
 
     println!("{:#?}", b);
-//    let b = Tensor::new(b_val);
+    //    let b = Tensor::new(b_val);
     //    let mut c = op(a, b);
     //    let mut vs = c.backwards();
     //

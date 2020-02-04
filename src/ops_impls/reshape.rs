@@ -24,7 +24,7 @@ impl Op for Reshape {
     }
 
     fn forward(self) -> Tensor {
-        let mut out_tensor = self.input.clone_without_op_graph();
+        let mut out_tensor = self.input.clone_only_data();
         out_tensor.data = out_tensor
             .data
             .into_shape(self.output_shape.clone())
@@ -34,14 +34,15 @@ impl Op for Reshape {
         out_tensor
     }
 
-    fn set_operand_grad(&mut self, previous_op_grad: ArrayBase<OwnedRepr<f32>, Dim<IxDynImpl>>) {
+    fn set_operand_grad(&mut self, previous_op_grad: Tensor) {
         // example: [6] -> [2x3]
         // can we just reshape the gradients back to the original shape?
         // Lets try
         let a = previous_op_grad
+            .data
             .into_shape(self.input.shape())
             .expect("Error reshaping gradients in backwards pass");
-        self.input.grad = Some(a);
+        self.input.grad = Some(Box::new(Tensor::from_ndarray(a)));
     }
 
     fn operands(&self) -> Vec<&Tensor> {
@@ -52,7 +53,4 @@ impl Op for Reshape {
         vec![&mut self.input]
     }
 
-    fn operands_clone_without_op_graph(&self) -> Vec<Tensor> {
-        vec![self.input.clone_without_op_graph()]
-    }
 }

@@ -25,13 +25,19 @@ impl Op for MatMulOp {
         tensor
     }
 
-    fn set_operand_grad(&mut self, previous_op_grad: ndarray::Array<f32, IxDyn>) {
+    fn set_operand_grad(&mut self, previous_op_grad: Tensor) {
         // taken from https://github.com/pytorch/pytorch/blob/master/tools/autograd/templates/Functions.cpp
         // left = mm_mat1_backward
         // right = mm_mat2_backward
 
-        self.left.grad = Some(mm_ndarray(previous_op_grad.view(), self.right.data.t()));
-        self.right.grad = Some(mm_ndarray(self.left.data.t(), previous_op_grad.view()));
+        self.left.grad = Some(Box::new(Tensor::from_ndarray(mm_ndarray(
+            previous_op_grad.data.view(),
+            self.right.data.t(),
+        ))));
+        self.right.grad = Some(Box::new(Tensor::from_ndarray(mm_ndarray(
+            self.left.data.t(),
+            previous_op_grad.data.view(),
+        ))));
     }
 
     fn operands(&self) -> Vec<&Tensor> {
@@ -42,10 +48,4 @@ impl Op for MatMulOp {
         vec![&mut self.left, &mut self.right]
     }
 
-    fn operands_clone_without_op_graph(&self) -> Vec<Tensor> {
-        vec![
-            self.left.clone_without_op_graph(),
-            self.right.clone_without_op_graph(),
-        ]
-    }
 }

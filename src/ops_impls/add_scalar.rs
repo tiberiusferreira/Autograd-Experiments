@@ -3,22 +3,22 @@ use ndarray::prelude::Dim;
 use ndarray::{ArrayBase, IxDynImpl, OwnedRepr};
 
 #[derive(Debug)]
-pub struct Add {
+pub struct AddScalar {
     left: Tensor,
-    right: Tensor,
+    right: f32,
 }
 
-pub fn add(left: Tensor, right: Tensor) -> Tensor {
-    Add { left, right }.forward()
+pub fn add_scalar(left: Tensor, right: f32) -> Tensor {
+    AddScalar { left, right }.forward()
 }
 
-impl Op for Add {
+impl Op for AddScalar {
     fn name(&self) -> String {
-        "Add".to_string()
+        "AddScalar".to_string()
     }
 
     fn forward(self) -> Tensor {
-        let out_data = &self.right.data + &self.left.data;
+        let out_data = &self.left.data + self.right;
         let mut output = Tensor::from_ndarray(out_data);
         output.mother_op = Some(Box::new(self));
         output
@@ -26,26 +26,25 @@ impl Op for Add {
 
     fn set_operand_grad(&mut self, previous_op_grad: Tensor) {
         self.left.set_grad(previous_op_grad.clone_only_data());
-        self.right.set_grad(previous_op_grad.clone_only_data());
     }
 
     fn operands(&self) -> Vec<&Tensor> {
-        vec![&self.left, &self.right]
+        vec![&self.left]
     }
 
     fn operands_mut(&mut self) -> Vec<&mut Tensor> {
-        vec![&mut self.left, &mut self.right]
+        vec![&mut self.left]
     }
 
 }
 
-impl std::ops::Add for Tensor {
+impl std::ops::Add<f32> for Tensor {
     type Output = Tensor;
 
-    fn add(self, rhs: Self) -> Self::Output {
+    fn add(self, rhs: f32) -> Self::Output {
         let left = self;
         let right = rhs;
-        let add_op: Add = Add { left, right };
+        let add_op: AddScalar = AddScalar { left, right };
         add_op.forward()
     }
 }
