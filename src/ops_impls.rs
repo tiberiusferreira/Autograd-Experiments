@@ -1,6 +1,6 @@
-//mod matmul;
+mod matmul;
 use crate::tensor::{Tensor, TensorBackend};
-//pub use matmul::matmul;
+pub use matmul::matmul;
 
 //mod reshape;
 //pub use reshape::reshape;

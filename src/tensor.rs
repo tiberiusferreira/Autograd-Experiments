@@ -4,7 +4,6 @@ use ndarray::prelude::IxDyn;
 use std::collections::HashMap;
 pub use crate::tensor::backends::NdArray;
 
-
 mod backends;
 pub use backends::TensorBackend;
 #[derive(Debug)]
@@ -40,8 +39,17 @@ impl<T: TensorBackend> Tensor<T> {
         }
     }
 
+    pub fn from_op_result(op_result: T, shape: &[usize], mother_op: Box<dyn Op<T>>) -> Self {
+        Tensor {
+            data: op_result,
+            mother_op: Some(mother_op),
+            parameter_id: None,
+            grad: None,
+            shape: shape.to_vec(),
+        }
+    }
+
     pub fn zeros(shape: &[usize]) -> Self {
-//        let val = ndarray::prelude::ArrayBase::zeros(shape);
         Tensor {
             data: T::zeros(shape),
             mother_op: None,
@@ -52,9 +60,6 @@ impl<T: TensorBackend> Tensor<T> {
     }
 
     pub fn rand(shape: &[usize]) -> Self {
-        use ndarray_rand::rand_distr::Uniform;
-        use ndarray_rand::RandomExt;
-//        let val = ndarray::Array::random(shape, Uniform::new(0., 10.));
         Tensor {
             data: T::rand(shape),
             mother_op: None,
@@ -137,8 +142,7 @@ impl<T: TensorBackend> Tensor<T> {
                 self.shape.len() == 1 && self.shape[0] == 1,
                 "Backward call needs a gradient if the Tensor shape is not [1]"
             );
-            unimplemented!()
-//            self.set_grad(Tensor::from_ndarray(arr1(&[1.]).into_dyn()));
+            self.set_grad(Tensor::new(&[1.]));
         }
 
         // where the parameters will be stored after having the gradients populated
