@@ -10,15 +10,17 @@ fn main() {
 
     let a: Tensor<NdArray> = Tensor::from_ndarray(a);
 
-//    let b = arr2(&[[7., 8., 9.]]).reversed_axes().into_dyn();
+    let b = arr2(&[[7., 8., 9.]]).reversed_axes().into_dyn();
     // 3x1
 
-//    let b = Tensor::from_ndarray(b);
-//    let g = Tensor::from_ndarray(arr2(&[[1.], [1.]]).into_dyn());
+    let b = Tensor::from_ndarray(b);
+    let mut c = matmul(a,b);
+    let g = Tensor::from_ndarray(arr2(&[[1.], [1.]]).into_dyn());
     //    let b = Tensor::new();
 
 //    let mut c = matmul(a, b); // 2x1
-//    c.backwards(Some(g));
+    c.backwards(Some(g));
+    println!("{:#?}", c);
 //    println!("{:#?}", c);
     //        let mut c = a * b;
     //        c = relu(c);

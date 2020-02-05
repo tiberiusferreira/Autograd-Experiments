@@ -9,6 +9,9 @@ pub trait TensorBackend: Sized + Clone + Debug + 'static{
     fn zeros(shape: &[usize]) -> Self;
     fn rand(shape: &[usize]) -> Self;
     fn matmul2d(&self, rhs: &Self) -> Self;
+    /// Transposes dim 0 and 1, panics if they don't exist
+    fn t(&self) -> Self;
+    fn shape(&self) -> &[usize];
 }
 
 #[derive(Debug, Clone)]

@@ -43,16 +43,17 @@ impl<T: TensorBackend> Op<T> for MatMulOp<T> {
         // taken from https://github.com/pytorch/pytorch/blob/master/tools/autograd/templates/Functions.cpp
         // left = mm_mat1_backward
         // right = mm_mat2_backward
+        // Here we dont need to check the shapes because if they were valid for the forwards path,
+        // they are valid for the backward
+        let right_transposed = self.right.data.t();
+        let left_grad = previous_op_grad.data.matmul2d(&right_transposed);
 
-//        self.left.grad = Some(Box::new(Tensor::from_ndarray(mm_ndarray(
-//            previous_op_grad.data.view(),
-//            self.right.data.t(),
-//        ))));
-//        self.right.grad = Some(Box::new(Tensor::from_ndarray(mm_ndarray(
-//            self.left.data.t(),
-//            previous_op_grad.data.view(),
-//        ))));
-        unimplemented!()
+
+        self.left.grad = Some(Box::new(Tensor::from_backend(left_grad)));
+
+        let k = self.left.data.t().matmul2d(&previous_op_grad.data);
+
+        self.right.grad = Some(Box::new(Tensor::from_backend(k)));
     }
 
     fn operands(&self) -> Vec<&Tensor<T>> {

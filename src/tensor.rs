@@ -49,6 +49,17 @@ impl<T: TensorBackend> Tensor<T> {
         }
     }
 
+    pub (in crate) fn from_backend(data: T) -> Self {
+        let shape = data.shape().to_vec();
+        Tensor {
+            data,
+            mother_op: None,
+            parameter_id: None,
+            grad: None,
+            shape,
+        }
+    }
+
     pub fn zeros(shape: &[usize]) -> Self {
         Tensor {
             data: T::zeros(shape),

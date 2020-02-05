@@ -23,4 +23,14 @@ impl TensorBackend for NdArray {
         let other_view = rhs.0.view();
         Self(matmul2d::mm_ndarray(self_view, other_view))
     }
+
+    fn t(&self) -> Self {
+        let mut new = self.clone();
+        new.0.swap_axes(0, 1);
+        new
+    }
+
+    fn shape(&self) -> &[usize] {
+        self.0.shape()
+    }
 }
