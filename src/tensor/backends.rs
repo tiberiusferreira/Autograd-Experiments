@@ -12,6 +12,9 @@ pub trait TensorBackend: Sized + Clone + Debug + 'static{
     /// Transposes dim 0 and 1, panics if they don't exist
     fn t(&self) -> Self;
     fn shape(&self) -> &[usize];
+    /// sums all elements
+    fn sum(&self) -> f32;
+    fn fill_with(&mut self, value: f32);
 }
 
 #[derive(Debug, Clone)]

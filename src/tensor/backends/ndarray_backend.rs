@@ -33,4 +33,12 @@ impl TensorBackend for NdArray {
     fn shape(&self) -> &[usize] {
         self.0.shape()
     }
+
+    fn sum(&self) -> f32 {
+        self.0.sum()
+    }
+
+    fn fill_with(&mut self, value: f32) {
+        self.0.fill(value);
+    }
 }

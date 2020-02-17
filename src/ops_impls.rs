@@ -2,10 +2,12 @@ mod matmul;
 use crate::tensor::{Tensor, TensorBackend};
 pub use matmul::matmul;
 
+//mod index;
+
 //mod reshape;
 //pub use reshape::reshape;
 
-//mod sum;
+mod sum;
 
 //mod relu;
 //pub use relu::relu;
@@ -17,7 +19,6 @@ pub use matmul::matmul;
 //pub use add_scalar::add_scalar;
 //mod sub;
 //pub use sub::sub;
-pub(in crate) mod ndarray_specific;
 #[cfg(test)]
 mod tests;
 use ndarray::prelude::IxDyn;
@@ -28,7 +29,7 @@ pub trait Op<T: TensorBackend>: std::fmt::Debug {
     /// The Tensor returned should have this Op as its "mother op"
     fn forward(self) -> Tensor<T>;
     /// Should set its own operands gradients
-    fn set_operand_grad(&mut self, previous_op_grad: Tensor<T>);
+    fn set_operand_grad(&self, previous_op_grad: &Tensor<T>);
     fn operands(&self) -> Vec<&Tensor<T>>;
-    fn operands_mut(&mut self) -> Vec<&mut Tensor<T>>;
+//    fn operands_mut(&mut self) -> Vec<&mut Tensor<T>>;
 }
