@@ -1,4 +1,4 @@
-use crate::{Op, ParameterStore};
+use crate::{Op};
 use ndarray::arr1;
 use ndarray::prelude::IxDyn;
 use std::collections::HashMap;
@@ -8,9 +8,9 @@ mod backends;
 pub use backends::TensorBackend;
 
 
-pub struct Grad<T: TensorBackend>(Cell<Option<Box<Tensor<T>>>>);
+pub struct Grad<'a, T: TensorBackend + 'static>(Cell<Option<Box<Tensor<'a, T>>>>);
 
-impl <T: TensorBackend> Debug for Grad<T>{
+impl <'a, T: TensorBackend> Debug for Grad<'a, T>{
     fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
         let k = self.0.take();
         let r = k.fmt(f);
@@ -19,12 +19,12 @@ impl <T: TensorBackend> Debug for Grad<T>{
     }
 }
 
-impl <T: TensorBackend> Grad<T>{
+impl <'a, T: TensorBackend> Grad<'a, T>{
     pub fn none() -> Self{
         Grad(Cell::new(None))
     }
 
-    pub fn set(&self, t: Tensor<T>){
+    pub fn set(&self, t: Tensor<'a, T>){
         self.0.replace(Some(Box::new(t)));
     }
 
@@ -37,15 +37,15 @@ impl <T: TensorBackend> Grad<T>{
 
 }
 #[derive(Debug)]
-pub struct Tensor<T: TensorBackend> {
+pub struct Tensor<'a, T: TensorBackend + 'static> {
     pub data: T,
     pub(in crate) parameter_id: Option<String>,
-    pub grad: Grad<T>,
-    pub(in crate) mother_op: Option<Box<dyn Op<T>>>,
+    pub grad: Grad<'a, T>,
+    pub(in crate) mother_op: Option<Box<dyn Op<'a, T> + 'a >>,
 }
 
-impl Tensor<NdArray> {
-    pub fn from_ndarray(arr: ndarray::Array<f32, IxDyn>) -> Tensor<NdArray> {
+impl <'a> Tensor<'a, NdArray> {
+    pub fn from_ndarray(arr: ndarray::Array<f32, IxDyn>) -> Tensor<'a, NdArray> {
         Tensor {
             data: NdArray(arr),
             mother_op: None,
@@ -55,7 +55,7 @@ impl Tensor<NdArray> {
     }
 }
 
-impl<T: TensorBackend> Tensor<T> {
+impl<'a, T: TensorBackend + 'static> Tensor<'a, T> {
     pub fn new(val: &[f32]) -> Self {
         Tensor {
             data: T::from_slice(val),
@@ -65,7 +65,7 @@ impl<T: TensorBackend> Tensor<T> {
         }
     }
 
-    pub fn from_op_result(op_result: T, mother_op: Box<dyn Op<T>>) -> Self {
+    pub fn from_op_result<'b>(op_result: T, mother_op: Box<dyn Op<'b, T> + 'b>) -> Tensor<'b, T> {
         Tensor {
             data: op_result,
             mother_op: Some(mother_op),
@@ -115,7 +115,7 @@ impl<T: TensorBackend> Tensor<T> {
         self.data.shape()
     }
 
-    pub(in crate) fn set_grad(&self, grad: Tensor<T>) {
+    pub(in crate) fn set_grad(&self, grad: Tensor<'a, T>) {
         assert_eq!(
             self.shape(), grad.shape(),
             "Gradient must have same shape as the Tensor itself: {:?} {:?}",
@@ -126,7 +126,7 @@ impl<T: TensorBackend> Tensor<T> {
     }
 
     /// Removes the computation graph history which generated this tensor
-    pub fn into_standalone(mut self) -> Tensor<T> {
+    pub fn into_standalone(mut self) -> Tensor<'a, T> {
         self.mother_op = None;
         self
     }
@@ -162,7 +162,7 @@ impl<T: TensorBackend> Tensor<T> {
         }
     }
 
-    pub fn backwards(&mut self, initial_grad: Option<Tensor<T>>) -> ParameterStore<T> {
+    pub fn backwards<'b: 'a>(&'b mut self, initial_grad: Option<Tensor<'a, T>>) {
         if let Some(grad) = initial_grad {
             assert_eq!(
                 self.shape(), grad.shape(),
@@ -181,12 +181,12 @@ impl<T: TensorBackend> Tensor<T> {
         let mut hash: HashMap<String, Tensor<T>> = HashMap::new();
 
         // for each operation, calculate operands gradients recursively
-        self.recursive_calc_grads(&mut hash);
+        self.recursive_calc_grads();
 
-        ParameterStore::from_hashmap(hash)
+//        ParameterStore::from_hashmap(hash)
     }
 
-    pub fn recursive_calc_grads(&self, hash: &mut HashMap<String, Tensor<T>>) {
+    pub fn recursive_calc_grads<'b>(&'b self) {
         if let Some(op) = &self.mother_op {
             // Set the gradient of this tensor's original Op arguments
             let self_grad = self
@@ -196,25 +196,26 @@ impl<T: TensorBackend> Tensor<T> {
             op.set_operand_grad(&self_grad);
 
             // Ask the operands to set their Ops operands gradients too
-            for operand in op.operands() {
-                operand.recursive_calc_grads(hash);
-            }
+
+            // for operand in op.operands() {
+            //     operand.recursive_calc_grads();
+            // }
 
             // Now all gradients should have been updated
-            let operands = op.operands();
+            // let operands = op.operands();
 
             // Get all tensors which are parameters
-            let trainable_operands: Vec<Tensor<T>> = operands
-                .iter()
-                .filter(|o| o.parameter_id.is_some())
-                .map(|o| o.clone_without_op_graph())
-                .collect();
+            // let trainable_operands: Vec<Tensor<T>> = operands
+            //     .iter()
+            //     .filter(|o| o.parameter_id.is_some())
+            //     .map(|o| o.clone_without_op_graph())
+            //     .collect();
 
             // Insert parameters in the Hashmap
-            for single_trainable in trainable_operands {
-                let id = single_trainable.parameter_id.clone().unwrap();
-                hash.insert(id, single_trainable);
-            }
+//            for single_trainable in trainable_operands {
+//                let id = single_trainable.parameter_id.clone().unwrap();
+//                hash.insert(id, single_trainable);
+//            }
         }
     }
 }
@@ -241,12 +242,13 @@ impl<T: TensorBackend> Tensor<T> {
 use std::ops::Index;
 use std::cell::Cell;
 use std::fmt::{Debug, Formatter, Error};
+//use crate::store::ParameterStore;
 
-impl<T: TensorBackend> Index<&[usize]> for Tensor<T> {
-    type Output = Tensor<T>;
-
-    fn index(&self, index: &[usize]) -> &Self::Output {
-        unimplemented!()
-    }
-}
+//impl<T: TensorBackend> Index<&[usize]> for Tensor<'a, T> {
+//    type Output = Tensor<'a, T>;
+//
+//    fn index(&self, index: &[usize]) -> &Self::Output {
+//        unimplemented!()
+//    }
+//}
 

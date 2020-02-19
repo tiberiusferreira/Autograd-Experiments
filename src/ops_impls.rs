@@ -7,7 +7,7 @@ pub use matmul::matmul;
 //mod reshape;
 //pub use reshape::reshape;
 
-mod sum;
+//mod sum;
 
 //mod relu;
 //pub use relu::relu;
@@ -23,13 +23,13 @@ mod sum;
 mod tests;
 use ndarray::prelude::IxDyn;
 
-pub trait Op<T: TensorBackend>: std::fmt::Debug {
+pub trait Op<'a, T: TensorBackend>: std::fmt::Debug {
     fn name(&self) -> String;
     /// Should return the result of the operation.
     /// The Tensor returned should have this Op as its "mother op"
-    fn forward(self) -> Tensor<T>;
+    fn forward(self) -> Tensor<'a, T>;
     /// Should set its own operands gradients
-    fn set_operand_grad(&self, previous_op_grad: &Tensor<T>);
-    fn operands(&self) -> Vec<&Tensor<T>>;
+    fn set_operand_grad(&self, previous_op_grad: &Tensor<'a, T>);
+    // fn operands(&self) -> Vec<&'a Tensor<'a, T>>;
 //    fn operands_mut(&mut self) -> Vec<&mut Tensor<T>>;
 }

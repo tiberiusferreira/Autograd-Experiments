@@ -2,39 +2,40 @@ use crate::{Op, Tensor, TensorBackend};
 use ndarray::prelude::IxDyn;
 
 #[derive(Debug)]
-pub struct MatMulOp<T: TensorBackend> {
-    left: Tensor<T>,
-    right: Tensor<T>,
+pub struct MatMulOp<'a, T: TensorBackend + 'static> {
+    left: &'a Tensor<'a, T>,
+    right: &'a Tensor<'a, T>,
 }
 
-pub fn matmul<T: TensorBackend>(left: Tensor<T>, right: Tensor<T>) -> Tensor<T> {
-    let mul_op: MatMulOp<T> = MatMulOp { left, right };
-    mul_op.forward()
+pub fn matmul<'a, T: TensorBackend + 'static>(left: &'a Tensor<'a, T>, right: &'a Tensor<'a, T>){// -> Tensor<'a, T> {
+    // let mul_op: MatMulOp<T> = MatMulOp { left, right };
+    // mul_op.forward()
 }
 
-impl<T: TensorBackend> Op<T> for MatMulOp<T> {
+impl<'a, T: TensorBackend + 'static> Op<'a, T> for MatMulOp<'a, T> {
     fn name(&self) -> String {
         "MatMul".to_string()
     }
 
-    fn forward(self) -> Tensor<T> {
-        let shape_left =  &self.left.shape();
-        let shape_right =  &self.right.shape();
-        assert!(
-            shape_left.len() == 2 && shape_right.len() == 2,
-            "Can only multiply tensors of rank 2, but got {:?} and {:?}",
-            shape_left,
-            shape_right
-        );
-        assert_eq!(
-            shape_left.last().unwrap(),
-            shape_right.first().unwrap(),
-            "Tensor shapes dont match for multiplication: {:?} and {:?}",
-            shape_left,
-            shape_right
-        );
-        let result = self.left.data.matmul2d(&self.right.data);
-        Tensor::from_op_result(result, Box::new(self))
+    fn forward(self) -> Tensor<'a, T> {
+        // let shape_left =  &self.left.shape();
+        // let shape_right =  &self.right.shape();
+        // assert!(
+        //     shape_left.len() == 2 && shape_right.len() == 2,
+        //     "Can only multiply tensors of rank 2, but got {:?} and {:?}",
+        //     shape_left,
+        //     shape_right
+        // );
+        // assert_eq!(
+        //     shape_left.last().unwrap(),
+        //     shape_right.first().unwrap(),
+        //     "Tensor shapes dont match for multiplication: {:?} and {:?}",
+        //     shape_left,
+        //     shape_right
+        // );
+        // let result = self.left.data.matmul2d(&self.right.data);
+        // Tensor::from_op_result(result, Box::new(self))
+        unimplemented!()
     }
 
     fn set_operand_grad(&self, previous_op_grad: &Tensor<T>) {
@@ -55,9 +56,11 @@ impl<T: TensorBackend> Op<T> for MatMulOp<T> {
 //        self.right.grad = Some(Box::new(Tensor::from_backend(right_grad)));
     }
 
-    fn operands(&self) -> Vec<&Tensor<T>> {
-        vec![&self.left, &self.right]
-    }
+    // fn operands<'c>(&'c self) -> Vec<&'c Tensor<T>>{
+    //     let  l = self.right;
+    //     let  r = self.right;
+    //     vec![l, r]
+    // }
 
 //    fn operands_mut(&mut self) -> Vec<&mut Tensor<T>> {
 //        vec![&mut self.left, &mut self.right]

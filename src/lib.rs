@@ -2,7 +2,7 @@ mod ops_impls;
 mod store;
 pub use ops_impls::*;
 use std::collections::HashMap;
-pub use store::ParameterStore;
+//pub use store::ParameterStore;
 pub mod test_helpers;
 use ndarray::prelude::arr1;
 use ndarray::IxDyn;
