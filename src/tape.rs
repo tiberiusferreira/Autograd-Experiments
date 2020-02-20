@@ -1,5 +1,4 @@
 use std::cell::RefCell;
-use std::rc::Rc;
 use std::fmt::{Formatter, Error};
 
 /// Tape holds a list of Nodes.
@@ -25,8 +24,23 @@ use std::fmt::{Formatter, Error};
 /// Grad y = gradient of a (1) * x.value
 
 #[derive(Debug)]
-pub struct Tape { nodes: RefCell<Vec<Node>> }
+pub struct Tape {
+    vars_backwards_data: RefCell<Vec<VarBackwardData>>
+}
 
+// #[derive(Debug)]
+// struct Node {
+//     /// parent index and its gradient
+//     parents_indices_n_grad: Vec<(usize, GradFn)>,
+// }
+
+#[derive(Debug)]
+struct VarBackwardData{
+    var_operands_grad_blueprint: Vec<OperandGradBlueprint>
+}
+
+
+/// First argument is the child_grad, second is the current "parent" grad
 pub struct GradFn(Box<dyn Fn(Vec<f64>, &mut Vec<f64>)>);
 
 impl std::fmt::Debug for GradFn{
@@ -35,11 +49,20 @@ impl std::fmt::Debug for GradFn{
     }
 }
 
+
+
 #[derive(Debug)]
-struct Node {
-    /// parent index and its gradient
-    // parents_indices_n_grad: Vec<(usize, Vec<f64>)>,
-    parents_indices_n_grad: Vec<(usize, GradFn)>,
+struct OperandGradBlueprint {
+    /// The index where to store the gradient calculated by the grad_fn in the output gradient
+    /// structure. The gradient calculated is the gradient of the operand in question
+    /// the Var associated with this struct.
+    /// This index is the same as the one inside the parent Var.
+    operand_index: usize,
+    /// Used to initialize the gradients (to zero)
+    grad_shape: usize,
+    /// Function which takes the current Var gradient and a mutable reference to the current gradient
+    /// of one of the operands of the operation that resulted in this Var
+    grad_fn: GradFn
 }
 
 
@@ -53,7 +76,7 @@ pub struct Var<'t> {
 
 impl Tape {
     pub fn new() -> Self {
-        Tape { nodes: RefCell::new(Vec::new()) }
+        Tape { vars_backwards_data: RefCell::new(Vec::new()) }
     }
 
     //noinspection RsNeedlessLifetimes
@@ -66,32 +89,24 @@ impl Tape {
     }
 
     pub fn len(&self) -> usize {
-        self.nodes.borrow().len()
+        self.vars_backwards_data.borrow().len()
     }
 
     fn push_new_var_get_index(&self) -> usize {
-        let mut nodes = self.nodes.borrow_mut();
+        let mut nodes = self.vars_backwards_data.borrow_mut();
         let len = nodes.len();
-        nodes.push(Node {
-            parents_indices_n_grad: vec![],
+        nodes.push(VarBackwardData{
+            var_operands_grad_blueprint: vec![],
         });
         len
     }
 
-    // fn push_var_with_parents_get_index(&self, parents: Vec<(usize, Vec<f64>)>) -> usize {
-    //     let mut nodes = self.nodes.borrow_mut();
-    //     let len = nodes.len();
-    //     nodes.push(Node {
-    //         parents_indices_n_grad: parents,
-    //     });
-    //     len
-    // }
 
-    fn push_var_with_parents_get_index(&self, parents: Vec<(usize, GradFn)>) -> usize {
-        let mut nodes = self.nodes.borrow_mut();
+    fn push_var_with_parents_get_index(&self, grad_info: Vec<OperandGradBlueprint>) -> usize {
+        let mut nodes = self.vars_backwards_data.borrow_mut();
         let len = nodes.len();
-        nodes.push(Node {
-            parents_indices_n_grad: parents,
+        nodes.push(VarBackwardData{
+            var_operands_grad_blueprint: grad_info,
         });
         len
     }
@@ -135,18 +150,25 @@ impl<'t> Var<'t> {
 
     pub fn grad(&self) -> Grad {
         let len = self.tape.len();
-        let nodes = self.tape.nodes.borrow();
+        let nodes = self.tape.vars_backwards_data.borrow();
         let mut all_grads: Vec<Vec<f64>> = vec![vec![]; len];
         all_grads[self.index] = vec![1.0];
         for i in (0 .. len).rev() {
             let node = &nodes[i];
             let child_grad = all_grads[i].clone();
-            for j in 0..node.parents_indices_n_grad.len() {
-                // all_grads[node.parents_indices_n_grad[j].0] = mul_vec_f64(&node.parents_indices_n_grad[j].1, &child_grad);
-                let grad_fn = &node.parents_indices_n_grad[j].1;
-                // all_grads[node.parents_indices_n_grad[j].0] = grad_fn.0(child_grad.clone());
-                let curr_grad = &mut all_grads[node.parents_indices_n_grad[j].0];
-                 grad_fn.0(child_grad.clone(), curr_grad);
+            for j in 0..node.var_operands_grad_blueprint.len() {
+                let grad_fn = &node.var_operands_grad_blueprint[j].grad_fn;
+                let curr_grad = &mut all_grads[node.var_operands_grad_blueprint[j].operand_index];
+                // Need to check if curr_grad is empty
+                if curr_grad.is_empty(){
+                    let new_grad_shape  = node.var_operands_grad_blueprint[j].grad_shape;
+                    let mut new_grad = Vec::with_capacity(new_grad_shape);
+                    for _i in 0..new_grad_shape {
+                        new_grad.push(0.);
+                    }
+                    *curr_grad = new_grad;
+                }
+                grad_fn.0(child_grad.clone(), curr_grad);
             }
         }
         Grad { all_grads }
@@ -165,7 +187,17 @@ impl<'t> Var<'t> {
             *self_grad = mul_vec_f64(&left_val, &child_grad);
         }));
 
-        let parents = vec![(self.index, grad_fn_left), (other.index, grad_fn_right)];
+        let left_blueprint = OperandGradBlueprint{
+            operand_index: self.index,
+            grad_shape: self.value.len(),
+            grad_fn: grad_fn_left
+        };
+        let right_blueprint = OperandGradBlueprint{
+            operand_index: other.index,
+            grad_shape: self.value.len(),
+            grad_fn: grad_fn_right
+        };
+        let parents = vec![left_blueprint, right_blueprint];
         Var {
             tape: self.tape,
             value: mul_vec_f64(&self.value, other.value()),
@@ -175,10 +207,24 @@ impl<'t> Var<'t> {
     }
 
     pub fn index(&self, index: usize) -> Var<'t>{
+        let self_len = self.value.len();
         let grad_fn: GradFn = GradFn(Box::new(move |child_grad: Vec<f64>, self_grad: &mut Vec<f64>|{
+            // if self_grad.is_empty(){
+            //     let mut new_self_grad: Vec<f64> = Vec::with_capacity(self_len);
+            //     for _i in 0..self_len{
+            //         new_self_grad.push(0.);
+            //     }
+            //     *self_grad = new_self_grad;
+            // }
             self_grad[index] += child_grad[0];
         }));
-        let parent = vec![(self.index, grad_fn)];
+        let operand_blueprint = OperandGradBlueprint{
+            operand_index: self.index,
+            grad_shape: self.value.len(),
+            grad_fn
+        };
+
+        let parent = vec![operand_blueprint];
         Var {
             tape: self.tape,
             value: vec![self.value[index]],
@@ -199,13 +245,14 @@ mod tests {
         let mut x_val = 0.5;
         for _i in 0..1 {
             let t = Tape::new();
-            let x = t.new_var(&[x_val]);
-            let y = t.new_var(&[4.2]);
+            let x = t.new_var(&[1., 2.]);
+            let y = t.new_var(&[3., 4.]);
             let z = x.mul(&y);
-            let grad = z.grad();
+            let z_0 = z.index(1);
+            let grad = z_0.grad();
 
             // x_val = x_val - grad.wrt(&x)[0];
-            println!("{:#?}", grad.wrt(&y));
+            // println!("{:#?}", grad.wrt(&y));
             println!("{:#?}", grad);
             // println!("{:#?}", x.value);
             // println!("{:#?}", w.wrt(&x));
