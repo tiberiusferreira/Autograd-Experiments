@@ -12,7 +12,7 @@ ndarray-rand = "0.11.0"
 
 [lib]
 name = "backprop"
-path = "src/lib.rs"
+path = "src/backprop.rs"
 
 [[bin]]
 name = "main"
