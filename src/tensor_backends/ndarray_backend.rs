@@ -33,10 +33,12 @@ impl TensorBackend for NdArray {
     }
 
 
-    fn t(&self) -> Self {
-        let mut new = self.clone();
-        new.0.swap_axes(0, 1);
-        new
+    fn t(&mut self) {
+        self.0.swap_axes(0, 1);
+    }
+
+    fn reshape(&mut self, shape: &[usize]) {
+        self.0 = self.0.clone().into_shape(shape).expect("Invalid shape");
     }
 
     fn shape(&self) -> &[usize] {

@@ -27,6 +27,7 @@ pub fn validate_grad<T: TensorBackend>(input: Tensor<T>, computation: &dyn for<'
         let actual_output = new_output.data().index(first_index);
         let predicted_output = output_no_delta + delta * output_grad_wrt_input;
         let error = (actual_output-predicted_output).abs();
+        println!("initial: {:?}", output_no_delta);
         println!("Delta: {:?}", delta);
         println!("Grad: {:?}", output_grad_wrt_input);
         println!("actual: {:?}", actual_output);

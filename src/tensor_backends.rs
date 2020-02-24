@@ -17,7 +17,8 @@ pub trait TensorBackend: Sized + Clone + Debug + 'static{
     fn is_empty(&self) -> bool;
 
     /// Transposes dim 0 and 1, panics if they don't exist
-    fn t(&self) -> Self;
+    fn t(&mut self);
+    fn reshape(&mut self, shape: &[usize]);
     fn shape(&self) -> &[usize];
 
     /// sums all elements
