@@ -69,7 +69,7 @@ pub struct Tensor<'t, T: TensorBackend> {
     /// "parents" of this Var are stored
     pub parent_op_index: usize,
     /// The actual value of this Var
-    pub value: T,
+    data: T,
 }
 
 impl <T: TensorBackend> Tape<T> {
@@ -79,12 +79,59 @@ impl <T: TensorBackend> Tape<T> {
         }
     }
 
+
     //noinspection RsNeedlessLifetimes
-    pub fn new_tensor<'t>(&'t self, value: &[f32]) -> Tensor<'t, T> {
+    pub fn new_tensor_from_slice<'t>(&'t self, value: &[f32]) -> Tensor<'t, T> {
         Tensor {
             tape: self,
-            value: T::from_slice(value),
+            data: T::from_slice(value),
             parent_op_index: self.push_op(OpData::empty()),
+        }
+    }
+
+    //noinspection RsNeedlessLifetimes
+    pub fn zeros<'t>(&'t self, shape: &[usize]) -> Tensor<'t, T> {
+        Tensor {
+            tape: self,
+            data: T::zeros(shape),
+            parent_op_index: self.push_op(OpData::empty()),
+        }
+    }
+
+    //noinspection RsNeedlessLifetimes
+    pub fn rand<'t>(&'t self, shape: &[usize]) -> Tensor<'t, T> {
+        Tensor {
+            tape: self,
+            data: T::rand(shape),
+            parent_op_index: self.push_op(OpData::empty()),
+        }
+    }
+
+    //noinspection RsNeedlessLifetimes
+    pub fn zeros_like<'t>(&'t self, other: &Tensor<'t, T>) -> Tensor<'t, T> {
+        Tensor {
+            tape: self,
+            data: T::zeros_like(&other.data),
+            parent_op_index: self.push_op(OpData::empty()),
+        }
+    }
+
+
+    //noinspection RsNeedlessLifetimes
+    pub fn new_from_backend_value<'t>(&'t self, value: T) -> Tensor<'t, T> {
+        Tensor {
+            tape: self,
+            data: value,
+            parent_op_index: self.push_op(OpData::empty()),
+        }
+    }
+
+
+    pub fn new_from_op_result_and_data(&self, op_result: T, op_data: OpData<T>) -> Tensor<T>{
+        Tensor {
+            tape: self,
+            data: op_result,
+            parent_op_index: self.push_op(op_data),
         }
     }
 
@@ -117,22 +164,29 @@ pub struct Grad<T: TensorBackend> {
 
 impl <T: TensorBackend> Grad<T> {
     //noinspection RsNeedlessLifetimes
-    pub fn wrt<'t>(&self, var: &Tensor<'t, T>) -> T {
+    pub fn wrt<'t>(&self, var: &Tensor<'t, T>) -> Tensor<'t, T> {
         match self.all_grads.get(var.parent_op_index) {
             None => {
                 panic!("This var is not part of the computational graph. Maybe it was created using another Tape");
             }
-            Some(grad) => grad.clone(),
+            Some(grad) => var.tape.new_from_backend_value(grad.clone()),
         }
     }
 }
 
 impl<'t, T: TensorBackend> Tensor<'t, T> {
-    pub fn value(&self) -> &T {
-        &self.value
+    pub fn data(&self) -> &T {
+        &self.data
     }
 
+    pub fn shape(&self) -> &[usize] {
+        self.data.shape()
+    }
+
+
+
     pub fn grad(&self) -> Grad<T> {
+        assert_eq!(self.shape(), &[1], "Can only do backwards pass from scalar values");
         let tape_len = self.tape.len();
         let ops_data = self.tape.ops_data.borrow();
 
@@ -162,6 +216,7 @@ impl<'t, T: TensorBackend> Tensor<'t, T> {
                     *curr_grad = T::zeros(new_grad_shape.as_slice());
                 }
                 // Update its gradient
+                // First argument is the child_grad, second is the current "parent" grad
                 grad_fn.0(current_tensor_grad.clone(), curr_grad);
             }
         }
@@ -173,7 +228,7 @@ impl<'t, T: TensorBackend> Tensor<'t, T> {
     pub fn self_gradient_blueprint(&self, grad_fn: GradFn<T>) -> OperandGradBlueprint<T> {
         OperandGradBlueprint {
             operand_tape_index: self.parent_op_index,
-            grad_shape: self.value.shape().to_vec(),
+            grad_shape: self.data.shape().to_vec(),
             grad_fn,
         }
     }

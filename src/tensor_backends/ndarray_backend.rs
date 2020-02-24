@@ -19,24 +19,19 @@ impl TensorBackend for NdArray {
         Self(ndarray::Array::random(shape, dist).into_dyn())
     }
 
+    fn zeros_like(other: &Self) -> Self {
+        let shape = other.shape();
+        Self::zeros(shape)
+    }
+
     fn empty() -> Self {
         Self::from_slice(&[])
     }
 
     fn is_empty(&self) -> bool {
-        self.shape() == &[]
+        self.shape() == &[] || self.shape() == &[0]
     }
 
-
-    fn matmul2d(&self, rhs: &Self) -> Self {
-        let self_view = self.0.view();
-        let other_view = rhs.0.view();
-        Self(matmul2d::mm_ndarray(self_view, other_view))
-    }
-
-    fn mul(&self, rhs: &Self) -> Self {
-        Self(&self.0*&rhs.0)
-    }
 
     fn t(&self) -> Self {
         let mut new = self.clone();
@@ -56,7 +51,17 @@ impl TensorBackend for NdArray {
         self.0.fill(value);
     }
 
-    fn index(&self, index: &[usize]) -> Self {
+    fn matmul2d(&self, rhs: &Self) -> Self {
+        let self_view = self.0.view();
+        let other_view = rhs.0.view();
+        Self(matmul2d::mm_ndarray(self_view, other_view))
+    }
+
+    fn mul(&self, rhs: &Self) -> Self {
+        Self(&self.0*&rhs.0)
+    }
+
+    fn new_from_index(&self, index: &[usize]) -> Self {
         let indexes = index.to_vec();
         let inner = &self.0;
         let indexed_val = match indexes.len(){
@@ -67,5 +72,38 @@ impl TensorBackend for NdArray {
             _ => panic!()
         };
         NdArray(indexed_val)
+    }
+
+
+    fn index(&self, index: &[usize]) -> f32 {
+        assert_eq!(index.len(), self.shape().len(), "Needs to index with the same number of dimensions and the Tensor itself.");
+        let indexes = index.to_vec();
+        let inner = &self.0;
+        let indexed_val = match indexes.len(){
+            0 => {panic!("Invalid index: &[]")},
+            1 => inner[[indexes[0]]],
+            2 => inner[[indexes[0], indexes[1]]],
+            3 => inner[[indexes[0], indexes[1], indexes[2]]],
+            _ => panic!("Indexing not implemented for more than 3 dims")
+        };
+        indexed_val
+    }
+
+    fn _index_mut(&mut self, index: &[usize]) -> &mut f32 {
+        let indexes = index.to_vec();
+        let inner = &mut self.0;
+        let indexed_val = match indexes.len(){
+            0 => {panic!("Invalid index: &[]")},
+            1 => &mut inner[[indexes[0]]],
+            2 => &mut inner[[indexes[0], indexes[1]]],
+            3 => &mut inner[[indexes[0], indexes[1], indexes[2]]],
+            _ => panic!("Indexing not implemented for more than 3 dims")
+        };
+        indexed_val
+    }
+
+    fn add(&self, rhs: &Self) -> Self {
+        assert_eq!(self.shape(), rhs.shape(), "Adding gradients of different shape");
+        Self(&self.0 + &rhs.0)
     }
 }
