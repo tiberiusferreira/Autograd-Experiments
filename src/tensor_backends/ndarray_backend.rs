@@ -33,6 +33,10 @@ impl TensorBackend for NdArray {
     }
 
 
+    fn fill_with(&mut self, value: f32) {
+        self.0.fill(value);
+    }
+
     fn t(&mut self) {
         self.0.swap_axes(0, 1);
     }
@@ -45,22 +49,41 @@ impl TensorBackend for NdArray {
         self.0.shape()
     }
 
-    fn sum(&self) -> f32 {
-        self.0.sum()
+    fn add(&self, rhs: &Self) -> Self {
+        assert_eq!(self.shape(), rhs.shape(), "Can only add elements of same shape");
+        Self(&self.0 + &rhs.0)
     }
 
-    fn fill_with(&mut self, value: f32) {
-        self.0.fill(value);
+    fn sub(&self, rhs: &Self) -> Self {
+        assert_eq!(self.shape(), rhs.shape(), "Can only sub elements of same shape");
+        Self(&self.0 - &rhs.0)
+    }
+
+    fn mul(&self, rhs: &Self) -> Self {
+        Self(&self.0*&rhs.0)
+    }
+
+    fn add_scalar(&self, rhs: f32) -> Self {
+        Self(&self.0 + rhs)
+    }
+
+
+    fn sub_scalar(&self, rhs: f32) -> Self {
+        Self(&self.0 - rhs)
+    }
+
+    fn mul_scalar(&self, rhs: f32) -> Self {
+        Self(&self.0 * rhs)
+    }
+
+    fn sum(&self) -> f32 {
+        self.0.sum()
     }
 
     fn matmul2d(&self, rhs: &Self) -> Self {
         let self_view = self.0.view();
         let other_view = rhs.0.view();
         Self(matmul2d::mm_ndarray(self_view, other_view))
-    }
-
-    fn mul(&self, rhs: &Self) -> Self {
-        Self(&self.0*&rhs.0)
     }
 
     fn new_from_index(&self, index: &[usize]) -> Self {
@@ -75,7 +98,6 @@ impl TensorBackend for NdArray {
         };
         NdArray(indexed_val)
     }
-
 
     fn index(&self, index: &[usize]) -> f32 {
         assert_eq!(index.len(), self.shape().len(), "Needs to index with the same number of dimensions and the Tensor itself.");
@@ -103,9 +125,18 @@ impl TensorBackend for NdArray {
         };
         indexed_val
     }
+}
 
-    fn add(&self, rhs: &Self) -> Self {
-        assert_eq!(self.shape(), rhs.shape(), "Adding gradients of different shape");
-        Self(&self.0 + &rhs.0)
+
+#[cfg(test)]
+mod ndarray_backend_tests {
+    use crate::tensor_backends::{NdArray, TensorBackend};
+    use super::*;
+    #[test]
+    fn scalar_add() {
+        let left = NdArray::from_slice(&[1., 2., 3.]);
+        let right = 2.;
+        assert_eq!(NdArray::from_slice(&[3., 4., 5.]), left.add_scalar(right));
+        assert_eq!(left, NdArray::from_slice(&[1., 2., 3.]));
     }
 }

@@ -4,7 +4,7 @@ use crate::tensor_backends::TensorBackend;
 
 
 #[derive(Debug)]
-pub struct Tape<T: TensorBackend> {
+pub struct ComputationRecord<T: TensorBackend> {
     /// Stores the information necessary to calculate the gradient of the operands of Tensors
     /// which reference this Tape. Each Tensor stores an Index into this structure.
     /// So, in order to construct the gradients we start with a Tensor and its given gradient,
@@ -62,9 +62,9 @@ pub struct OperandGradBlueprint<T: TensorBackend> {
 }
 
 #[derive(Debug)]
-pub struct Tensor<'t, T: TensorBackend> {
+pub struct TrackedTensor<'t, T: TensorBackend> {
     /// Reference to the Tape which stores the information needed to calculate the gradients
-    pub tape: &'t Tape<T>,
+    pub tape: &'t ComputationRecord<T>,
     /// Index of the slot in the tape where the information to calculate the gradient of the
     /// "parents" of this Var are stored
     pub parent_op_index: usize,
@@ -72,17 +72,17 @@ pub struct Tensor<'t, T: TensorBackend> {
     data: T,
 }
 
-impl <T: TensorBackend> Tape<T> {
+impl <T: TensorBackend> ComputationRecord<T> {
     pub fn new() -> Self {
-        Tape {
+        ComputationRecord {
             ops_data: RefCell::new(Vec::new()),
         }
     }
 
 
     //noinspection RsNeedlessLifetimes
-    pub fn new_tensor_from_slice<'t>(&'t self, value: &[f32]) -> Tensor<'t, T> {
-        Tensor {
+    pub fn tensor_from_slice<'t>(&'t self, value: &[f32]) -> TrackedTensor<'t, T> {
+        TrackedTensor {
             tape: self,
             data: T::from_slice(value),
             parent_op_index: self.push_op(OpData::empty()),
@@ -90,8 +90,8 @@ impl <T: TensorBackend> Tape<T> {
     }
 
     //noinspection RsNeedlessLifetimes
-    pub fn zeros<'t>(&'t self, shape: &[usize]) -> Tensor<'t, T> {
-        Tensor {
+    pub fn zeros<'t>(&'t self, shape: &[usize]) -> TrackedTensor<'t, T> {
+        TrackedTensor {
             tape: self,
             data: T::zeros(shape),
             parent_op_index: self.push_op(OpData::empty()),
@@ -99,8 +99,8 @@ impl <T: TensorBackend> Tape<T> {
     }
 
     //noinspection RsNeedlessLifetimes
-    pub fn rand<'t>(&'t self, shape: &[usize]) -> Tensor<'t, T> {
-        Tensor {
+    pub fn rand<'t>(&'t self, shape: &[usize]) -> TrackedTensor<'t, T> {
+        TrackedTensor {
             tape: self,
             data: T::rand(shape),
             parent_op_index: self.push_op(OpData::empty()),
@@ -108,8 +108,8 @@ impl <T: TensorBackend> Tape<T> {
     }
 
     //noinspection RsNeedlessLifetimes
-    pub fn zeros_like<'t>(&'t self, other: &Tensor<'t, T>) -> Tensor<'t, T> {
-        Tensor {
+    pub fn zeros_like<'t>(&'t self, other: &TrackedTensor<'t, T>) -> TrackedTensor<'t, T> {
+        TrackedTensor {
             tape: self,
             data: T::zeros_like(&other.data),
             parent_op_index: self.push_op(OpData::empty()),
@@ -118,8 +118,8 @@ impl <T: TensorBackend> Tape<T> {
 
 
     //noinspection RsNeedlessLifetimes
-    pub fn new_from_backend_value<'t>(&'t self, value: T) -> Tensor<'t, T> {
-        Tensor {
+    pub fn tensor_from_value<'t>(&'t self, value: T) -> TrackedTensor<'t, T> {
+        TrackedTensor {
             tape: self,
             data: value,
             parent_op_index: self.push_op(OpData::empty()),
@@ -127,8 +127,8 @@ impl <T: TensorBackend> Tape<T> {
     }
 
 
-    pub fn new_from_op_result_and_data(&self, op_result: T, op_data: OpData<T>) -> Tensor<T>{
-        Tensor {
+    pub fn tensor_from_op_result_and_data(&self, op_result: T, op_data: OpData<T>) -> TrackedTensor<T>{
+        TrackedTensor {
             tape: self,
             data: op_result,
             parent_op_index: self.push_op(op_data),
@@ -164,17 +164,17 @@ pub struct Grad<T: TensorBackend> {
 
 impl <T: TensorBackend> Grad<T> {
     //noinspection RsNeedlessLifetimes
-    pub fn wrt<'t>(&self, var: &Tensor<'t, T>) -> Tensor<'t, T> {
+    pub fn wrt<'t>(&self, var: &TrackedTensor<'t, T>) -> TrackedTensor<'t, T> {
         match self.all_grads.get(var.parent_op_index) {
             None => {
                 panic!("This var is not part of the computational graph. Maybe it was created using another Tape");
             }
-            Some(grad) => var.tape.new_from_backend_value(grad.clone()),
+            Some(grad) => var.tape.tensor_from_value(grad.clone()),
         }
     }
 }
 
-impl<'t, T: TensorBackend> Tensor<'t, T> {
+impl<'t, T: TensorBackend> TrackedTensor<'t, T> {
     pub fn data(&self) -> &T {
         &self.data
     }

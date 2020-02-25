@@ -1,8 +1,8 @@
-use crate::{GradFn, OpData, Tensor};
+use crate::{GradFn, OpData, TrackedTensor};
 use crate::tensor_backends::TensorBackend;
 
 //noinspection DuplicatedCode
-pub fn add<'t, T: TensorBackend>(left: &Tensor<'t, T>, other: &Tensor<'t, T>) -> Tensor<'t, T> {
+pub fn add<'t, T: TensorBackend>(left: &TrackedTensor<'t, T>, other: &TrackedTensor<'t, T>) -> TrackedTensor<'t, T> {
 
     let left_grad_fn_add: GradFn<T> = GradFn(Box::new(
         move |child_grad: T, self_grad: &mut T| {
@@ -24,7 +24,7 @@ pub fn add<'t, T: TensorBackend>(left: &Tensor<'t, T>, other: &Tensor<'t, T>) ->
         OpData::from_blueprints(vec![left_blueprint, right_blueprint], "Add".to_string());
 
     let op_result = left.data().add(&other.data());
-    left.tape.new_from_op_result_and_data(op_result, op_data)
+    left.tape.tensor_from_op_result_and_data(op_result, op_data)
 }
 
 
@@ -33,12 +33,12 @@ mod add_tests {
     use super::*;
     use crate::ops::testing::validate_grad;
     use crate::tensor_backends::NdArray;
-    use crate::tape::Tape;
+    use crate::tape::ComputationRecord;
 
 
-    fn add_twice<'t>(input: &Tensor<'t, NdArray>) -> Tensor<'t, NdArray> {
+    fn add_twice<'t>(input: &TrackedTensor<'t, NdArray>) -> TrackedTensor<'t, NdArray> {
         // [2.] + in + in
-        let input_1 = input.tape.new_tensor_from_slice(&[2.]);
+        let input_1 = input.tape.tensor_from_slice(&[2.]);
         let x = add(&input, &input_1);
         let y = add(&x, &input);
         y
@@ -46,8 +46,8 @@ mod add_tests {
 
     #[test]
     fn add_test() {
-        let t: Tape<NdArray> = Tape::new();
-        let input_0 = t.new_tensor_from_slice(&[1.]);
+        let t: ComputationRecord<NdArray> = ComputationRecord::new();
+        let input_0 = t.tensor_from_slice(&[1.]);
         validate_grad(input_0, &add_twice);
     }
 }

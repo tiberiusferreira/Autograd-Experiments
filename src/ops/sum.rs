@@ -1,8 +1,8 @@
-use crate::{GradFn, OpData, Tensor};
+use crate::{GradFn, OpData, TrackedTensor};
 use crate::tensor_backends::TensorBackend;
 
 //noinspection DuplicatedCode
-pub fn sum<'t, T: TensorBackend>(input: &Tensor<'t, T>) -> Tensor<'t, T> {
+pub fn sum<'t, T: TensorBackend>(input: &TrackedTensor<'t, T>) -> TrackedTensor<'t, T> {
 
     let grad_fn: GradFn<T> = GradFn(Box::new(
         move |child_grad: T, self_grad: &mut T| {
@@ -21,7 +21,7 @@ pub fn sum<'t, T: TensorBackend>(input: &Tensor<'t, T>) -> Tensor<'t, T> {
 
     let op_result = T::from_slice(&[input.data().sum()]);
 
-    input.tape.new_from_op_result_and_data(op_result, op_data)
+    input.tape.tensor_from_op_result_and_data(op_result, op_data)
 }
 
 
@@ -33,15 +33,15 @@ mod tests {
     use crate::tensor_backends::NdArray;
     use crate::ops::testing::validate_grad;
 
-    fn sum_computation<'t>(input: &Tensor<'t, NdArray>) -> Tensor<'t, NdArray> {
+    fn sum_computation<'t>(input: &TrackedTensor<'t, NdArray>) -> TrackedTensor<'t, NdArray> {
         let y = sum(&input);
         y
     }
 
     #[test]
     fn sum_test() {
-        let t: Tape<NdArray> = Tape::new();
-        let input_0 = t.new_tensor_from_slice(&[1., 2., 3., 4.]);
+        let t: ComputationRecord<NdArray> = ComputationRecord::new();
+        let input_0 = t.tensor_from_slice(&[1., 2., 3., 4.]);
         validate_grad(input_0, &sum_computation);
     }
 }

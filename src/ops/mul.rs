@@ -1,8 +1,8 @@
-use crate::{GradFn, OpData, Tensor};
+use crate::{GradFn, OpData, TrackedTensor};
 use crate::tensor_backends::TensorBackend;
 
 //noinspection DuplicatedCode
-pub fn mul<'t, T: TensorBackend>(left: &Tensor<'t, T>, other: &Tensor<'t, T>) -> Tensor<'t, T> {
+pub fn mul<'t, T: TensorBackend>(left: &TrackedTensor<'t, T>, other: &TrackedTensor<'t, T>) -> TrackedTensor<'t, T> {
     let right_val = other.data().clone();
     let grad_fn_left: GradFn<T> = GradFn(Box::new(
         move |child_grad: T, self_grad: &mut T| {
@@ -25,7 +25,7 @@ pub fn mul<'t, T: TensorBackend>(left: &Tensor<'t, T>, other: &Tensor<'t, T>) ->
 
     let op_result = left.data().mul(&other.data());
 
-    left.tape.new_from_op_result_and_data(op_result, op_data)
+    left.tape.tensor_from_op_result_and_data(op_result, op_data)
 }
 
 
@@ -38,19 +38,19 @@ mod tests {
     use crate::ops::testing::validate_grad;
     use crate::ops::sum::sum;
 
-    fn mul_twice<'t>(input: &Tensor<'t, NdArray>) -> Tensor<'t, NdArray> {
+    fn mul_twice<'t>(input: &TrackedTensor<'t, NdArray>) -> TrackedTensor<'t, NdArray> {
         // [2.] + in + in
-        let input_1 = input.tape.new_tensor_from_slice(&[2.]);
+        let input_1 = input.tape.tensor_from_slice(&[2.]);
         let x = mul(&input, &input_1);
         let y = mul(&x, &input);
         y
     }
 
-    fn mul_twice_sum<'t>(input: &Tensor<'t, NdArray>) -> Tensor<'t, NdArray> {
+    fn mul_twice_sum<'t>(input: &TrackedTensor<'t, NdArray>) -> TrackedTensor<'t, NdArray> {
         // [2.] + in + in
         let mut input_1 = NdArray::zeros_like(input.data());
         input_1.fill_with(2.);
-        let input_1 = input.tape.new_from_backend_value(input_1);
+        let input_1 = input.tape.tensor_from_value(input_1);
 
 
         let x = mul(&input, &input_1);
@@ -61,11 +61,11 @@ mod tests {
 
     #[test]
     fn mul_test() {
-        let t: Tape<NdArray> = Tape::new();
-        let scalar_input = t.new_tensor_from_slice(&[1.]);
+        let t: ComputationRecord<NdArray> = ComputationRecord::new();
+        let scalar_input = t.tensor_from_slice(&[1.]);
         validate_grad(scalar_input, &mul_twice);
 
-        let input = t.new_tensor_from_slice(&[1., 2., 3., 4.]);
+        let input = t.tensor_from_slice(&[1., 2., 3., 4.]);
         validate_grad(input, &mul_twice_sum);
     }
 }

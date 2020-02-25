@@ -29,7 +29,7 @@ impl From<&[usize]> for Indexer{
     }
 }
 
-// We may need GAT to implement iterator here
+// We may need GAT to implement iterator here due to lifetime in the result
 impl Indexer{
     pub fn next(&mut self) -> Option<&[usize]>{
         if self.current_index == self.max_index{
