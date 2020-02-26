@@ -86,6 +86,10 @@ impl TensorBackend for NdArray {
         Self(matmul2d::mm_ndarray(self_view, other_view))
     }
 
+    fn map_inplace<F>(&mut self, f: F) where F: FnMut(&mut f32) {
+        self.0.map_inplace(f);
+    }
+
     fn new_from_index(&self, index: &[usize]) -> Self {
         let indexes = index.to_vec();
         let inner = &self.0;

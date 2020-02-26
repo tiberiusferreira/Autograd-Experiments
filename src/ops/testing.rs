@@ -32,6 +32,7 @@ pub fn validate_grad<T: TensorBackend>(input: TrackedTensor<T>, computation: &dy
         println!("Grad: {:?}", output_grad_wrt_input);
         println!("actual: {:?}", actual_output);
         println!("predicted: {:?}", predicted_output);
+        println!();
         assert!(error < 0.001);
     }
 

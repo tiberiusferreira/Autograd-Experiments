@@ -79,7 +79,6 @@ impl <T: TensorBackend> ComputationRecord<T> {
         }
     }
 
-
     //noinspection RsNeedlessLifetimes
     pub fn tensor_from_slice<'t>(&'t self, value: &[f32]) -> TrackedTensor<'t, T> {
         TrackedTensor {
@@ -177,6 +176,11 @@ impl <T: TensorBackend> Grad<T> {
 impl<'t, T: TensorBackend> TrackedTensor<'t, T> {
     pub fn data(&self) -> &T {
         &self.data
+    }
+
+
+    pub fn into_data(self) -> T {
+        self.data
     }
 
     pub fn shape(&self) -> &[usize] {

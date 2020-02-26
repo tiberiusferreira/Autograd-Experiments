@@ -9,3 +9,6 @@ mod testing;
 
 mod matmul;
 pub use matmul::matmul;
+
+mod relu;
+pub use relu::relu;
