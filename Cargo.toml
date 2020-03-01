@@ -15,5 +15,5 @@ name = "backprop"
 path = "src/backprop.rs"
 
 [[bin]]
-name = "main"
-path = "src/main.rs"
+name = "simple_training"
+path = "examples/simple_training.rs"
