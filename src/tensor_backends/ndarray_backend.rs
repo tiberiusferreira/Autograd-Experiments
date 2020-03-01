@@ -90,18 +90,6 @@ impl TensorBackend for NdArray {
         self.0.map_inplace(f);
     }
 
-    fn new_from_index(&self, index: &[usize]) -> Self {
-        let indexes = index.to_vec();
-        let inner = &self.0;
-        let indexed_val = match indexes.len(){
-            0 => {panic!("Invalid index: &[]")},
-            1 => arr0(inner[[indexes[0]]]).into_dyn(),
-            2 => arr0(inner[[indexes[0], indexes[1]]]).into_dyn(),
-            3 => arr0(inner[[indexes[0], indexes[1], indexes[2]]]).into_dyn(),
-            _ => panic!()
-        };
-        NdArray(indexed_val)
-    }
 
     fn index(&self, index: &[usize]) -> f32 {
         assert_eq!(index.len(), self.shape().len(), "Needs to index with the same number of dimensions and the Tensor itself.");

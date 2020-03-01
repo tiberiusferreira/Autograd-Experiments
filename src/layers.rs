@@ -52,7 +52,7 @@ mod layer_tests {
     use std::collections::HashMap;
 
     #[test]
-    fn matmul_test() {
+    fn layer_test() {
 
         let mut parameter_store: HashMap<String, NdArray> = HashMap::new();
 

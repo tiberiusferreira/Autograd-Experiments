@@ -39,9 +39,10 @@ pub trait TensorBackend: Sized + Clone + Debug + 'static{
     /// sums all elements
     fn sum(&self) -> f32;
     fn matmul2d(&self, rhs: &Self) -> Self;
+
+    // Operating on all elements
     fn map_inplace<F>(&mut self, f: F) where F: FnMut(&mut f32);
 
-    fn new_from_index(&self, index: &[usize]) -> Self;
     fn index(&self, index: &[usize]) -> f32;
     fn _index_mut(&mut self, index: &[usize]) -> &mut f32;
 }
